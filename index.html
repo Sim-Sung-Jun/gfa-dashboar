@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GFA vs 검색광고 효율 분석</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --blue:#1971c2; --blue-dark:#0c447c; --blue-light:#e7f1fb;
+    --green:#0ca678; --green-light:#e6f7f1;
+    --red:#e03131; --red-light:#fcebeb;
+    --gray:#868e96; --gray-light:#f1f3f5;
+    --ink:#1a1d20; --muted:#5f6b76; --line:#e9ecef;
+    --bg:#f6f8fb; --card:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1080px; margin:0 auto; padding:48px 24px 80px;}
+
+  /* header */
+  .hero{margin-bottom:40px;}
+  .badge{display:inline-block; font-size:13px; font-weight:600; color:var(--blue);
+    background:var(--blue-light); padding:5px 14px; border-radius:20px; margin-bottom:16px;}
+  .hero h1{font-size:32px; font-weight:800; letter-spacing:-0.5px; line-height:1.3; margin-bottom:14px;}
+  .hero h1 .hl{color:var(--blue);}
+  .hero p.sub{font-size:17px; color:var(--muted); max-width:760px;}
+  .period{font-size:13px; color:var(--gray); margin-top:12px;}
+
+  /* verdict banner */
+  .verdict{background:linear-gradient(135deg,#1971c2,#1864ab); color:#fff;
+    border-radius:18px; padding:28px 32px; margin:32px 0 44px; display:flex;
+    align-items:center; gap:24px; flex-wrap:wrap;}
+  .verdict .vnum{font-size:46px; font-weight:800; line-height:1;}
+  .verdict .vtxt{flex:1; min-width:240px;}
+  .verdict .vtxt strong{font-size:18px; font-weight:700; display:block; margin-bottom:6px;}
+  .verdict .vtxt span{font-size:15px; opacity:0.92;}
+
+  /* section title */
+  .sec-title{font-size:13px; font-weight:700; color:var(--gray); letter-spacing:1px;
+    text-transform:uppercase; margin:0 0 18px;}
+
+  /* KPI grid */
+  .kpi-block{margin-bottom:48px;}
+  .kpi-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  .kpi-grid.two{grid-template-columns:repeat(2,1fr); max-width:710px;}
+  .kpi{background:var(--card); border-radius:16px; padding:22px 22px 20px;
+    border:1px solid var(--line); position:relative; overflow:hidden;}
+  .kpi::before{content:''; position:absolute; left:0; top:0; bottom:0; width:4px;}
+  .kpi.win::before{background:var(--green);}
+  .kpi.bad::before{background:var(--red);}
+  .kpi .klabel{font-size:13px; color:var(--muted); margin-bottom:10px; font-weight:500;}
+  .kpi .kval{font-size:34px; font-weight:800; letter-spacing:-0.5px; line-height:1;}
+  .kpi.win .kval{color:var(--green);}
+  .kpi.bad .kval{color:var(--red);}
+  .kpi .knote{font-size:13px; color:var(--gray); margin-top:8px;}
+  .kpi .kcompare{margin-top:14px; padding:12px 16px; border-radius:10px;
+    background:var(--red-light); display:flex; align-items:center; justify-content:space-between;}
+  .kpi .kcompare .clbl{font-size:17px; color:var(--red); font-weight:800;}
+  .kpi .kcompare .cval{font-size:22px; font-weight:800; letter-spacing:-0.3px;}
+  .kpi.win .kcompare .cval{color:var(--green);}
+  .kpi.bad .kcompare .cval{color:var(--red);}
+  .kpi-head{font-size:14px; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px;}
+  .kpi-head.win{color:var(--green);}
+  .kpi-head.bad{color:var(--red);}
+  .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+  .dot.win{background:var(--green);} .dot.bad{background:var(--red);}
+
+  /* chart card */
+  .chart-card{background:var(--card); border-radius:18px; border:1px solid var(--line);
+    padding:28px 28px 26px; margin-bottom:28px;}
+  .chart-card h3{font-size:19px; font-weight:700; margin-bottom:4px;}
+  .chart-card .csub{font-size:14px; color:var(--muted); margin-bottom:20px;}
+  .chart-box{position:relative; width:100%;}
+  .legend{display:flex; flex-wrap:wrap; gap:18px; margin-bottom:14px; font-size:13px; color:var(--muted);}
+  .legend span{display:flex; align-items:center; gap:6px;}
+  .legend i{width:12px; height:12px; border-radius:3px; display:inline-block;}
+  .legend i.line{height:3px; width:18px; border-radius:2px;}
+
+  /* insight box */
+  .insight{margin-top:20px; background:var(--blue-light); border-radius:12px;
+    padding:16px 18px; font-size:14.5px; color:var(--blue-dark); line-height:1.65;
+    border-left:4px solid var(--blue);}
+  .insight b{font-weight:700;}
+
+  /* dual donut */
+  .donut-row{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  .donut-cell{text-align:center;}
+  .donut-cell .dlabel{font-size:14px; font-weight:600; color:var(--muted); margin-bottom:6px;}
+  .donut-cell .dbox{position:relative; height:200px;}
+
+  /* summary + action */
+  .summary{background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:32px 34px; margin-top:44px;}
+  .sum-head{font-size:13px; font-weight:700; color:var(--blue); letter-spacing:1px;
+    text-transform:uppercase; margin-bottom:18px;}
+  .sum-list{list-style:none; counter-reset:s; margin-bottom:34px;}
+  .sum-list li{position:relative; padding:0 0 16px 40px; font-size:15.5px; line-height:1.6; color:var(--ink);}
+  .sum-list li:last-child{padding-bottom:0;}
+  .sum-list li::before{counter-increment:s; content:counter(s); position:absolute; left:0; top:0;
+    width:26px; height:26px; background:var(--blue-light); color:var(--blue);
+    border-radius:50%; font-size:13px; font-weight:800; display:flex;
+    align-items:center; justify-content:center;}
+  .sum-list b{font-weight:700;}
+  .action-head{font-size:18px; font-weight:800; margin-bottom:18px; padding-top:26px;
+    border-top:1px solid var(--line);}
+  .action-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:16px;}
+  .action{background:var(--blue-light); border-radius:14px; padding:20px 20px 22px;}
+  .action .anum{font-size:14px; font-weight:800; color:var(--blue); margin-bottom:10px;}
+  .action .atxt b{font-size:15px; font-weight:700; color:var(--blue-dark); line-height:1.4;}
+  .action .atxt span{font-size:13.5px; color:var(--muted); line-height:1.55; display:inline-block; margin-top:6px;}
+
+  /* footer */
+  .foot{text-align:center; font-size:13px; color:var(--gray); margin-top:48px;
+    padding-top:24px; border-top:1px solid var(--line);}
+
+  @media(max-width:760px){
+    .wrap{padding:32px 16px 60px;}
+    .hero h1{font-size:25px;}
+    .kpi-grid{grid-template-columns:1fr;}
+    .kpi-grid.two{grid-template-columns:1fr; max-width:none;}
+    .verdict{padding:24px;}
+    .verdict .vnum{font-size:38px;}
+    .donut-row{grid-template-columns:1fr;}
+    .action-grid{grid-template-columns:1fr;}
+    .summary{padding:26px 20px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <span class="badge">광고 채널 효율 분석</span>
+    <h1>효율 좋은 <span class="hl">검색광고</span>는 25%, <br>효율 낮은 GFA에 75%를 쓰고 있다</h1>
+    <p class="sub">검색광고는 GFA보다 2.5배 효율적인데도 예산은 거꾸로 배분돼 있습니다. 검색광고 비중을 끌어올려 상품별 순위 경쟁으로 자연매출까지 키우는 것이 답입니다.</p>
+    <p class="period">분석 기간 : 2026년 1월 ~ 5월 (월별 집계 기준)</p>
+  </header>
+
+  <!-- VERDICT -->
+  <div class="verdict">
+    <div class="vnum">2.5×</div>
+    <div class="vtxt">
+      <strong>검색광고가 GFA보다 2.5배 효율적입니다</strong>
+      <span>같은 1원을 써도 검색은 9.02원, GFA는 3.67원을 법니다. 그런데 예산은 GFA에 3배 더 들어가 있습니다.</span>
+    </div>
+  </div>
+
+  <!-- KPI : WIN -->
+  <div class="kpi-block">
+    <div class="kpi-head win"><span class="dot win"></span>검색광고 우위</div>
+    <div class="kpi-grid two">
+      <div class="kpi win">
+        <div class="klabel">검색광고 누적 ROAS</div>
+        <div class="kval">902%</div>
+        <div class="knote">5개월 누적 (매출÷지출)</div>
+        <div class="kcompare"><span class="clbl">GFA 367%</span><span class="cval">2.5배 ↑</span></div>
+      </div>
+      <div class="kpi win">
+        <div class="klabel">검색광고 1원당 매출</div>
+        <div class="kval">9.02원</div>
+        <div class="knote">1원 지출당 회수 매출</div>
+        <div class="kcompare"><span class="clbl">GFA 3.67원</span><span class="cval">2.5배 ↑</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI : BAD -->
+  <div class="kpi-block">
+    <div class="kpi-head bad"><span class="dot bad"></span>잘못된 예산 배분</div>
+    <div class="kpi-grid two">
+      <div class="kpi bad">
+        <div class="klabel">GFA 예산 비중</div>
+        <div class="kval">75%</div>
+        <div class="knote">효율 낮은데 예산은 최다</div>
+      </div>
+      <div class="kpi bad">
+        <div class="klabel">검색광고 예산 비중</div>
+        <div class="kval">25%</div>
+        <div class="knote">80%까지 확대 필요</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART 1 -->
+  <div class="chart-card">
+    <h3>채널별 누적 ROAS</h3>
+    <p class="csub">같은 1원으로 누가 더 버는가</p>
+    <div class="chart-box" style="height:260px;">
+      <canvas id="ch1" role="img" aria-label="검색광고 ROAS 902%, GFA 367%">검색 902%, GFA 367%</canvas>
+    </div>
+    <div class="insight">검색광고는 902%, GFA는 367%. 같은 1원을 써도 검색이 <b>2.5배</b> 더 법니다. 효율만 놓고 보면 승부는 이미 끝났습니다.</div>
+  </div>
+
+  <!-- CHART 3 -->
+  <div class="chart-card">
+    <h3>1원 지출당 매출</h3>
+    <p class="csub">가성비를 가장 쉽게 보는 지표</p>
+    <div class="chart-box" style="height:190px;">
+      <canvas id="ch3" role="img" aria-label="검색 1원당 9.02원, GFA 1원당 3.67원">검색 9.02원, GFA 3.67원</canvas>
+    </div>
+    <div class="insight">검색광고 1원 = <b>9.02원</b>, GFA 1원 = <b>3.67원</b>. 가성비 차이가 명확한데도 예산은 GFA에 더 많이 들어가 있습니다.</div>
+  </div>
+
+  <!-- CHART 4 -->
+  <div class="chart-card">
+    <h3>월별 ROAS 추이</h3>
+    <p class="csub">검색 효율이 떨어져도 GFA보다 위인가</p>
+    <div class="legend">
+      <span><i class="line" style="background:#0ca678;"></i>검색광고</span>
+      <span><i class="line" style="background:#e03131;"></i>GFA (점선)</span>
+    </div>
+    <div class="chart-box" style="height:280px;">
+      <canvas id="ch4" role="img" aria-label="월별 ROAS 검색 1270 1100 747 656 660, GFA 368 398 368 387 341">검색 하락하지만 항상 GFA 위</canvas>
+    </div>
+    <div class="insight">검색 효율이 1월 1270%에서 5월 660%로 내려왔지만, <b>그래도 매달 GFA보다 위</b>입니다. "검색이 떨어졌으니 GFA로 옮기자"는 틀렸습니다 — 떨어진 검색도 GFA보다 낫습니다.</div>
+  </div>
+
+  <!-- CHART 5 -->
+  <div class="chart-card">
+    <h3>예산 배분 : 현재 vs 제안</h3>
+    <p class="csub">효율 기반으로 다시 짠다면</p>
+    <div class="legend">
+      <span><i style="background:#868e96;"></i>GFA</span>
+      <span><i style="background:#0ca678;"></i>검색광고</span>
+    </div>
+    <div class="donut-row">
+      <div class="donut-cell">
+        <div class="dlabel">현재 (지출 기준)</div>
+        <div class="dbox"><canvas id="ch5a" role="img" aria-label="현재 GFA 75% 검색 25%">GFA 75% 검색 25%</canvas></div>
+      </div>
+      <div class="donut-cell">
+        <div class="dlabel">제안 (효율 기반)</div>
+        <div class="dbox"><canvas id="ch5b" role="img" aria-label="제안 GFA 20% 검색 80%">GFA 20% 검색 80%</canvas></div>
+      </div>
+    </div>
+    <div class="insight">현재는 효율 낮은 GFA에 75%가 쏠려 있습니다. 검색 비중을 <b>80%까지</b> 끌어올려 상품별 순위 경쟁에 투자하면, 광고매출은 물론 자연(오가닉) 매출까지 레버리지가 붙습니다.</div>
+  </div>
+
+  <!-- SUMMARY + ACTION -->
+  <div class="summary">
+    <div class="sum-head">한눈에 보는 결론</div>
+    <ol class="sum-list">
+      <li><b>검색광고가 GFA보다 2.5배 효율적이다.</b> 누적 ROAS 902% vs 367%, 1원당 매출 9.02원 vs 3.67원.</li>
+      <li><b>그런데 예산은 거꾸로 GFA에 75% 쏠려 있다.</b> 효율 좋은 검색광고에는 25%뿐.</li>
+      <li><b>검색 효율이 떨어져도 매달 GFA보다 위다.</b> "검색이 하락했으니 GFA로" 옮기는 건 잘못된 판단이다.</li>
+    </ol>
+    <div class="action-head">그래서, 이렇게 하자</div>
+    <div class="action-grid">
+      <div class="action">
+        <div class="anum">01</div>
+        <div class="atxt"><b>검색광고 예산을 80%까지 확대</b><br><span>효율 낮은 GFA 비중을 줄이고 검색으로 재배분</span></div>
+      </div>
+      <div class="action">
+        <div class="anum">02</div>
+        <div class="atxt"><b>상품별 순위 경쟁에 투자</b><br><span>검색광고로 키워드·상품 단위 노출을 끌어올려 랭킹 선점</span></div>
+      </div>
+      <div class="action">
+        <div class="anum">03</div>
+        <div class="atxt"><b>자연(오가닉) 매출 레버리지 확보</b><br><span>순위가 오르면 광고매출 + 광고비 없는 자연매출까지 동반 상승</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">데이터 출처 : 스스랜딩 GFA·검색광고 월별 집계 (2026.01 ~ 2026.05)</div>
+
+</div>
+
+<script>
+const FONT = "'Pretendard','Apple SD Gothic Neo',sans-serif";
+Chart.defaults.font.family = FONT;
+Chart.defaults.font.size = 13;
+Chart.defaults.color = '#5f6b76';
+
+// CH1 — channel ROAS bar
+new Chart(document.getElementById('ch1'), {
+  type:'bar',
+  data:{ labels:['검색광고','GFA'], datasets:[{
+    data:[902,367], backgroundColor:['#0ca678','#e03131'],
+    borderRadius:8, barThickness:96 }]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:c=>'ROAS '+c.parsed.y+'%'}} },
+    scales:{ y:{ beginAtZero:true, ticks:{callback:v=>v+'%'}, grid:{color:'#eef1f4'} },
+      x:{ grid:{display:false}, ticks:{font:{size:15,weight:'700'}} } } }
+});
+
+// CH3 — revenue per won (horizontal)
+new Chart(document.getElementById('ch3'), {
+  type:'bar',
+  data:{ labels:['검색광고','GFA'], datasets:[{
+    data:[9.02,3.67], backgroundColor:['#0ca678','#e03131'],
+    borderRadius:8, barThickness:52 }]},
+  options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:c=>'1원당 '+c.parsed.x+'원'}} },
+    scales:{ x:{ beginAtZero:true, ticks:{callback:v=>v+'원'}, grid:{color:'#eef1f4'} },
+      y:{ grid:{display:false}, ticks:{font:{size:14,weight:'700'}} } } }
+});
+
+// CH4 — monthly ROAS trend
+new Chart(document.getElementById('ch4'), {
+  type:'line',
+  data:{ labels:['1월','2월','3월','4월','5월'], datasets:[
+    { data:[1270,1100,747,656,660], borderColor:'#0ca678', backgroundColor:'#0ca678',
+      tension:.3, pointRadius:5, pointHoverRadius:7, borderWidth:3, label:'검색' },
+    { data:[368,398,368,387,341], borderColor:'#e03131', backgroundColor:'#e03131',
+      borderDash:[6,5], tension:.3, pointRadius:5, pointHoverRadius:7, borderWidth:3,
+      pointStyle:'rectRot', label:'GFA' } ]},
+  options:{ responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:c=>c.dataset.label+' '+c.parsed.y+'%'}} },
+    scales:{ y:{ beginAtZero:true, ticks:{callback:v=>v+'%'}, grid:{color:'#eef1f4'} },
+      x:{ grid:{display:false} } } }
+});
+
+// CH5 — budget donuts
+const pctLabel = {
+  id:'pctLabel',
+  afterDatasetsDraw(chart){
+    const {ctx} = chart;
+    const meta = chart.getDatasetMeta(0);
+    const data = chart.data.datasets[0].data;
+    meta.data.forEach((arc,i)=>{
+      const {x,y} = arc.tooltipPosition();
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = "800 17px 'Pretendard',sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(data[i]+'%', x, y);
+      ctx.restore();
+    });
+  }
+};
+const donutOpt = (data)=>({
+  type:'doughnut',
+  data:{ labels:['GFA','검색광고'], datasets:[{
+    data:data, backgroundColor:['#868e96','#0ca678'], borderWidth:2, borderColor:'#fff' }]},
+  options:{ responsive:true, maintainAspectRatio:false, cutout:'56%',
+    plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:c=>c.label+' '+c.parsed+'%'}} } },
+  plugins:[pctLabel]
+});
+new Chart(document.getElementById('ch5a'), donutOpt([75,25]));
+new Chart(document.getElementById('ch5b'), donutOpt([20,80]));
+</script>
+</body>
+</html>
